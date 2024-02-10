@@ -18,44 +18,80 @@ app.add_middleware( # añadir middleware para habilitar el CORS
 )
 
 palabras = ['python', 'hola', 'bienvenido','sharon','pote','jugo'] #lista donde se encuentran las palabras a adivinar 
-palabra_secreta = random.choice(palabras) #guarda en la variable alguna palabras que pertenezca a la lista 
 
 #dos listas, una para las letras correctas y otra para las letras incorrectas. Inicialmente, ambas listas estarán vacías. 
 letras_correctas = []
 letras_incorrectas = []
+palabra_mostrar = ""
+palabra_secreta= "" #variable que almacena la palabra secreta	
+vidas = 6 #variable que almacena las vidas del jugador
 
 @app.get("/palabras") #ruta de seleccion de palabras
 async def get_palabras():
-   return {'palabra': random.choice(palabras)} #esta linea de coigo selecciona una palabra randon de mi arreglo palabras
+   global letras_correctas, letras_incorrectas, palabra_secreta, vidas
+   letras_correctas = []
+   letras_incorrectas = []
+   palabra_secreta = random.choice(palabras)
+   vidas = 6
+   
+   return {'palabra': palabra_secreta}
+
 
 #metodo que evalua si la palabra secreta esta correcta y la muestra, para no seguir introduciendo letras
-def palabra_revelada(palabra_secreta: str, letras_correctas: list) -> bool: #Funcion que toma dos argumentos, palabra a adivinar y las letras correctas 
-  palabra_mostrar = ''.join(['_' if letra not in letras_correctas else letra for letra in palabra_secreta]) # la función join para convertir la lista resultante en una cadena
-  return palabra_mostrar == palabra_secreta
+def palabra_revelada() -> bool:
+    global palabra_secreta, palabra_mostrar
+    palabra_mostrar = ['_'] * len(palabra_secreta)  # inicializa la palabra a mostrar con guiones bajos
+
+    if palabra_secreta == "": # si la palabra secreta está vacía
+       palabra_secreta = random.choice(palabras) # selecciona una palabra al azar de la lista de palabras
+      
+    for correcta in letras_correctas:  # recorre la lista de letras correctas
+        letra = correcta["letra"]  # almacena la letra
+        posiciones = correcta["posiciones"]  # almacena las posiciones de la letra en la palabra secreta
+
+        for pos in posiciones:  # para cada posición de la letra en la palabra secreta
+            palabra_mostrar[pos] = letra  # reemplaza el guion bajo con la letra en la posición correcta
+
+    palabra_mostrar = "".join(palabra_mostrar)  # une la lista en una cadena
+    print(palabra_mostrar, "palabra", palabra_secreta)
+
+    return palabra_mostrar == palabra_secreta  # compara la palabra a mostrar con la palabra secreta
 
 @app.post("/adivinar/") #ruta o metodo para seleccionar letras y adivinar la palabra
 async def adivinar_letra(letra: str):
-   if palabra_revelada(palabra_secreta, letras_correctas): #llama el metodo y comprueba si las letras formaron la palabra correcta retorna el mensaje
-      return {"resultado": False, "mensaje": "La palabra ya ha sido adivinada, no puedes seguir introduciendo letras."}
-   elif letra in palabra_secreta: #si la letra pertenece a la palabra secreta la agrega
-      letras_correctas.append(letra)
-      return {"resultado": True, "letras_correctas": letras_correctas}
-   else:
-      letras_incorrectas.append(letra)
-      return {"resultado": False, "letras_incorrectas": letras_incorrectas}
+   global palabra_secreta, vidas
+   existe = False
    
-def mostrar_palabra_secreta():
-   palabra_mostrar = ""
-   for letra in palabra_secreta:
-       if letra in letras_correctas:
-           palabra_mostrar += letra #si la letra es correcta agrega a la palabra a mostrar
-       else:
-           palabra_mostrar += "_"
-   return palabra_mostrar
+   if palabra_secreta == "": #si la palabra secreta esta vacia
+      palabra_secreta = random.choice(palabras)
+   
+   if letra in palabra_secreta: #si la letra pertenece a la palabra secreta la agrega
+      letra_correcta = {"letra": letra, "posiciones": [pos for pos, char in enumerate(palabra_secreta) if char == letra]} #almacena la letra y la posicion en la que se encuentra
+      
+      for correcta in letras_correctas: #recorre la lista de letras correctas
+         if correcta["letra"] is letra: #si la letra esta en la lista de letras correctas
+            existe = True
+            break
+      
+      if not existe: #si no existe la letra en la lista de letras correctas
+         letras_correctas.append(letra_correcta) #agrega la letra a la lista de letras correctas
+         
+      if palabra_revelada(): #llama el metodo y comprueba si las letras formaron la palabra correcta retorna el mensaje
+         return {"resultado": True, "mensaje": "La palabra ya ha sido adivinada, no puedes seguir introduciendo letras.", "palabra": palabra_mostrar}
+            
+      return {"resultado": False, "palabra": palabra_mostrar}
+   else:
+      vidas = vidas - 1 #si la letra no pertenece a la palabra secreta resta una vida
+         
+      return {"resultado": False, "vidas": vidas, "palabra": palabra_mostrar}
 
-@app.get("/mostrar_palabra/")
-async def mostrar_palabra():
-   return {"palabra secreta": mostrar_palabra_secreta()}
+@app.delete("/reiniciar/") #ruta o metodo para reiniciar el juego
+async def reiniciar():
+   global letras_correctas, letras_incorrectas, palabra_secreta, vidas
+   letras_correctas = []
+   letras_incorrectas = []
+   palabra_secreta = random.choice(palabras)
+   vidas = 6
 
 #funcion principal
 @app.get("/")
