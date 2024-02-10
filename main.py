@@ -1,6 +1,7 @@
 from fastapi import FastAPI #importar librerias/bibliotecas necesarias
 from fastapi.middleware.cors import CORSMiddleware #middleware para habilitar todos los origenes
 import random
+from palabras import obtener_palabra_secreta
 
 app = FastAPI() #instancia de la clase 
 
@@ -31,7 +32,8 @@ async def get_palabras():
    global letras_correctas, letras_incorrectas, palabra_secreta, vidas
    letras_correctas = []
    letras_incorrectas = []
-   palabra_secreta = random.choice(palabras)
+   palabra_secreta = obtener_palabra_secreta() #llama el metodo obtener_palabra_secreta
+   print(palabra_secreta)
    vidas = 6
    
    return {'palabra': palabra_secreta}
@@ -41,9 +43,6 @@ async def get_palabras():
 def palabra_revelada() -> bool:
     global palabra_secreta, palabra_mostrar
     palabra_mostrar = ['_'] * len(palabra_secreta)  # inicializa la palabra a mostrar con guiones bajos
-
-    if palabra_secreta == "": # si la palabra secreta está vacía
-       palabra_secreta = random.choice(palabras) # selecciona una palabra al azar de la lista de palabras
       
     for correcta in letras_correctas:  # recorre la lista de letras correctas
         letra = correcta["letra"]  # almacena la letra
@@ -62,8 +61,9 @@ async def adivinar_letra(letra: str):
    global palabra_secreta, vidas
    existe = False
    
-   if palabra_secreta == "": #si la palabra secreta esta vacia
-      palabra_secreta = random.choice(palabras)
+   if palabra_secreta == "":  # si la palabra secreta está vacía
+       # llama el metodo obtener_palabra_secreta
+       palabra_secreta = obtener_palabra_secreta()
    
    if letra in palabra_secreta: #si la letra pertenece a la palabra secreta la agrega
       letra_correcta = {"letra": letra, "posiciones": [pos for pos, char in enumerate(palabra_secreta) if char == letra]} #almacena la letra y la posicion en la que se encuentra
